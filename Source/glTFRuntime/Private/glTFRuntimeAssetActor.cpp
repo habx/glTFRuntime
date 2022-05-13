@@ -28,6 +28,8 @@ void AglTFRuntimeAssetActor::BeginPlay()
 		return;
 	}
 
+	double LoadingStartTime = FPlatformTime::Seconds();
+
 	TArray<FglTFRuntimeScene> Scenes = Asset->GetScenes();
 	for (FglTFRuntimeScene& Scene : Scenes)
 	{
@@ -59,6 +61,8 @@ void AglTFRuntimeAssetActor::BeginPlay()
 			}
 		}
 	}
+
+	UE_LOG(LogGLTFRuntime, Log, TEXT("Asset loaded in %f seconds"), FPlatformTime::Seconds() - LoadingStartTime);
 }
 
 void AglTFRuntimeAssetActor::ProcessNode(USceneComponent* NodeParentComponent, const FName SocketName, FglTFRuntimeNode& Node)
