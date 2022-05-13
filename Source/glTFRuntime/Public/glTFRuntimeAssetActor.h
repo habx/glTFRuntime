@@ -32,7 +32,8 @@ protected:
 	template<typename T>
 	FName GetSafeNodeName(const FglTFRuntimeNode& Node)
 	{
-		return MakeUniqueObjectName(this, T::StaticClass(), *Node.Name);
+		return *Node.Name;
+		// return MakeUniqueObjectName(this, T::StaticClass(), *Node.Name);
 	}
 
 	TMap<USceneComponent*, FName> SocketMapping;

@@ -4,6 +4,7 @@
 #include "glTFRuntimeAssetActorAsync.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/StaticMeshSocket.h"
+#include "DatasmithAssetUserData.h"
 
 // Sets default values
 AglTFRuntimeAssetActorAsync::AglTFRuntimeAssetActorAsync()
@@ -90,6 +91,32 @@ void AglTFRuntimeAssetActorAsync::ProcessNode(USceneComponent* NodeParentCompone
 	if (!NewComponent)
 	{
 		return;
+	}
+
+	// check for extras
+	if (Node.Extras) {
+		for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*Node.Extras)->Values) {
+			FString StringValue;
+			const TArray<TSharedPtr<FJsonValue>>* ArrayValue;
+
+			if (Pair.Value->TryGetArray(ArrayValue)) {
+				TArray<FString> StringValueArray;
+				for (auto ArrayJsonValue : (*ArrayValue)) {
+					FString ArrayStringValue;
+					if (ArrayJsonValue->TryGetString(ArrayStringValue)) {
+						StringValueArray.Add(ArrayStringValue);
+					}
+				}
+
+				if (!StringValueArray.IsEmpty()) {
+					StringValue = FString::Join(StringValueArray, TEXT(","));
+					UDatasmithAssetUserData::SetDatasmithUserDataValueForKey(NewComponent, FName(*Pair.Key), StringValue);
+				}
+			}
+			else if (Pair.Value->TryGetString(StringValue)) {
+				UDatasmithAssetUserData::SetDatasmithUserDataValueForKey(NewComponent, FName(*Pair.Key), StringValue);
+			}
+		}
 	}
 
 	for (int32 ChildIndex : Node.ChildrenIndices)
@@ -189,5 +216,5 @@ void AglTFRuntimeAssetActorAsync::LoadSkeletalMeshAsync(USkeletalMesh* SkeletalM
 
 void AglTFRuntimeAssetActorAsync::ReceiveOnScenesLoaded_Implementation()
 {
-
+	ScenesLoaded.ExecuteIfBound();
 }

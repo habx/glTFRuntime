@@ -11,6 +11,8 @@ UCLASS()
 class GLTFRUNTIME_API AglTFRuntimeAssetActorAsync : public AActor
 {
 	GENERATED_BODY()
+
+	DECLARE_DELEGATE(FScenesLoaded);
 	
 public:	
 	// Sets default values for this actor's properties
@@ -25,11 +27,11 @@ protected:
 	template<typename T>
 	FName GetSafeNodeName(const FglTFRuntimeNode& Node)
 	{
-		return MakeUniqueObjectName(this, T::StaticClass(), *Node.Name);
+		return *Node.Name;
+		// return MakeUniqueObjectName(this, T::StaticClass(), *Node.Name);
 	}
 
 public:	
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "glTFRuntime")
 	UglTFRuntimeAsset* Asset;
 
@@ -41,6 +43,8 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, Category = "glTFRuntime", meta = (DisplayName = "On Scenes Loaded"))
 	void ReceiveOnScenesLoaded();
+
+	FScenesLoaded ScenesLoaded;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category="glTFRuntime")

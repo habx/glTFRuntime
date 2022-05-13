@@ -2067,21 +2067,21 @@ bool FglTFRuntimeParser::LoadPrimitive(TSharedRef<FJsonObject> JsonPrimitiveObje
 }
 
 
-bool FglTFRuntimeParser::GetBuffer(int32 Index, TArray64<uint8>& Bytes)
+bool FglTFRuntimeParser::GetBuffer(int32 Index, TArray64<uint8>*& Bytes)
 {
 	if (Index < 0)
 		return false;
 
 	if (Index == 0 && BinaryBuffer.Num() > 0)
 	{
-		Bytes = BinaryBuffer;
+		Bytes = &BinaryBuffer;
 		return true;
 	}
 
 	// first check cache
 	if (BuffersCache.Contains(Index))
 	{
-		Bytes = BuffersCache[Index];
+		Bytes = &BuffersCache[Index];
 		return true;
 	}
 
@@ -2115,9 +2115,11 @@ bool FglTFRuntimeParser::GetBuffer(int32 Index, TArray64<uint8>& Bytes)
 	// check it is a valid base64 data uri
 	if (Uri.StartsWith("data:"))
 	{
-		if (ParseBase64Uri(Uri, Bytes))
+		TArray64<uint8> Buffer;
+		if (ParseBase64Uri(Uri, Buffer))
 		{
-			BuffersCache.Add(Index, Bytes);
+			BuffersCache.Add(Index, Buffer);
+			Bytes = &BuffersCache[Index];
 			return true;
 		}
 		return false;
@@ -2125,9 +2127,11 @@ bool FglTFRuntimeParser::GetBuffer(int32 Index, TArray64<uint8>& Bytes)
 
 	if (ZipFile)
 	{
-		if (ZipFile->GetFileContent(Uri, Bytes))
+		TArray64<uint8> Buffer;
+		if (ZipFile->GetFileContent(Uri, Buffer))
 		{
-			BuffersCache.Add(Index, Bytes);
+			BuffersCache.Add(Index, Buffer);
+			Bytes = &BuffersCache[Index];
 			return true;
 		}
 	}
@@ -2135,9 +2139,11 @@ bool FglTFRuntimeParser::GetBuffer(int32 Index, TArray64<uint8>& Bytes)
 	// fallback
 	if (!BaseDirectory.IsEmpty())
 	{
-		if (FFileHelper::LoadFileToArray(Bytes, *FPaths::Combine(BaseDirectory, Uri)))
+		TArray64<uint8> Buffer;
+		if (FFileHelper::LoadFileToArray(Buffer, *FPaths::Combine(BaseDirectory, Uri)))
 		{
-			BuffersCache.Add(Index, Bytes);
+			BuffersCache.Add(Index, Buffer);
+			Bytes = &BuffersCache[Index];
 			return true;
 		}
 	}
@@ -2200,7 +2206,7 @@ bool FglTFRuntimeParser::GetBufferView(int32 Index, TArray64<uint8>& Bytes, int6
 		return false;
 	}
 
-	TArray64<uint8> WholeData;
+	TArray64<uint8>* WholeData;
 	if (!GetBuffer(BufferIndex, WholeData))
 	{
 		return false;
@@ -2223,12 +2229,12 @@ bool FglTFRuntimeParser::GetBufferView(int32 Index, TArray64<uint8>& Bytes, int6
 		Stride = 0;
 	}
 
-	if (ByteOffset + ByteLength > WholeData.Num())
+	if (ByteOffset + ByteLength > WholeData->Num())
 	{
 		return false;
 	}
 
-	Bytes.Append(&WholeData[ByteOffset], ByteLength);
+	Bytes.Append(WholeData->GetData() + ByteOffset, ByteLength);
 	return true;
 }
 

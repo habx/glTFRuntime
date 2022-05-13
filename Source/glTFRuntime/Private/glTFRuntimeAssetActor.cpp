@@ -212,9 +212,23 @@ void AglTFRuntimeAssetActor::ProcessNode(USceneComponent* NodeParentComponent, c
 	if (Node.Extras) {
 		for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*Node.Extras)->Values) {
 			FString StringValue;
-			float NumberValue;
+			const TArray<TSharedPtr<FJsonValue>>* ArrayValue;
 
-			if (Pair.Value->TryGetString(StringValue)) {
+			if (Pair.Value->TryGetArray(ArrayValue)) {
+				TArray<FString> StringValueArray;
+				for (auto ArrayJsonValue : (*ArrayValue)) {
+					FString ArrayStringValue;
+					if (ArrayJsonValue->TryGetString(ArrayStringValue)) {
+						StringValueArray.Add(ArrayStringValue);
+					}
+				}
+
+				if (!StringValueArray.IsEmpty()) {
+					StringValue = FString::Join(StringValueArray, TEXT(","));
+					UDatasmithAssetUserData::SetDatasmithUserDataValueForKey(NewComponent, FName(*Pair.Key), StringValue);
+				}
+			}
+			else if (Pair.Value->TryGetString(StringValue)) {
 				UDatasmithAssetUserData::SetDatasmithUserDataValueForKey(NewComponent, FName(*Pair.Key), StringValue);
 			}
 		}
