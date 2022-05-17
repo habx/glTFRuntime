@@ -409,10 +409,15 @@ bool FglTFRuntimeParser::LoadNodes()
 	{
 		TSharedPtr<FJsonObject> JsonNodeObject = (*JsonNodes)[Index]->AsObject();
 		if (!JsonNodeObject)
+		{
 			return false;
+		}
+
 		FglTFRuntimeNode Node;
 		if (!LoadNode_Internal(Index, JsonNodeObject.ToSharedRef(), JsonNodes->Num(), Node))
+		{
 			return false;
+		}
 
 		AllNodesCache.Add(Node);
 	}
@@ -491,7 +496,9 @@ bool FglTFRuntimeParser::LoadScenes(TArray<FglTFRuntimeScene>& Scenes)
 	{
 		FglTFRuntimeScene Scene;
 		if (!LoadScene(Index, Scene))
+		{
 			return false;
+		}
 		Scenes.Add(Scene);
 	}
 
@@ -718,10 +725,15 @@ bool FglTFRuntimeParser::LoadScene(int32 SceneIndex, FglTFRuntimeScene& Scene)
 		{
 			int64 NodeIndex;
 			if (!JsonSceneNode->TryGetNumber(NodeIndex))
+			{
 				return false;
+			}
+
 			FglTFRuntimeNode SceneNode;
 			if (!LoadNode(NodeIndex, SceneNode))
+			{
 				return false;
+			}
 			Scene.RootNodesIndices.Add(SceneNode.Index);
 		}
 	}
@@ -1757,18 +1769,18 @@ bool FglTFRuntimeParser::LoadPrimitives(TSharedRef<FJsonObject> JsonMeshObject, 
 		const TArray<TSharedPtr<FJsonValue>>* JsonTargetNamesArray;
 		if ((*JsonExtrasObject)->TryGetArrayField("targetNames", JsonTargetNamesArray))
 		{
-			auto ApplyTargetName = [FirstPrimitive, &Primitives](const int32 TargetNameIndex, const FString& TargetName)
+			auto ApplyTargetName = [FirstPrimitive](TArray<FglTFRuntimePrimitive>& Primitives, const int32 TargetNameIndex, const FString& TargetName)
 			{
-				int32 MorphTargetCounter = 0;
 				for (int32 PrimitiveIndex = FirstPrimitive; PrimitiveIndex < Primitives.Num(); PrimitiveIndex++)
 				{
+					int32 MorphTargetCounter = 0;
 					FglTFRuntimePrimitive& Primitive = Primitives[PrimitiveIndex];
 					for (FglTFRuntimeMorphTarget& MorphTarget : Primitive.MorphTargets)
 					{
 						if (MorphTargetCounter == TargetNameIndex)
 						{
 							MorphTarget.Name = TargetName;
-							return;
+							break;
 						}
 						MorphTargetCounter++;
 					}
@@ -1777,7 +1789,7 @@ bool FglTFRuntimeParser::LoadPrimitives(TSharedRef<FJsonObject> JsonMeshObject, 
 			for (int32 TargetNameIndex = 0; TargetNameIndex < JsonTargetNamesArray->Num(); TargetNameIndex++)
 			{
 				const FString TargetName = (*JsonTargetNamesArray)[TargetNameIndex]->AsString();
-				ApplyTargetName(TargetNameIndex, TargetName);
+				ApplyTargetName(Primitives, TargetNameIndex, TargetName);
 			}
 		}
 	}
@@ -2047,6 +2059,7 @@ bool FglTFRuntimeParser::LoadPrimitive(TSharedRef<FJsonObject> JsonPrimitiveObje
 			return false;
 		}
 
+		Primitive.Indices.AddUninitialized(Count);
 		for (int64 i = 0; i < Count; i++)
 		{
 			int64 IndexIndex = i * Stride;
@@ -2072,14 +2085,15 @@ bool FglTFRuntimeParser::LoadPrimitive(TSharedRef<FJsonObject> JsonPrimitiveObje
 				return false;
 			}
 
-			Primitive.Indices.Add(VertexIndex);
+			Primitive.Indices[i] = VertexIndex;
 		}
 	}
 	else
 	{
+		Primitive.Indices.AddUninitialized(Primitive.Positions.Num());
 		for (int32 VertexIndex = 0; VertexIndex < Primitive.Positions.Num(); VertexIndex++)
 		{
-			Primitive.Indices.Add(VertexIndex);
+			Primitive.Indices[VertexIndex] = VertexIndex;
 		}
 	}
 
@@ -2778,12 +2792,14 @@ bool FglTFRuntimeParser::GetMorphTargetNames(const int32 MeshIndex, TArray<FName
 	}
 
 	int32 MorphTargetIndex = 0;
-
+	bool bCheckOnly = false;
 	for (TSharedPtr<FJsonValue> JsonPrimitive : *JsonPrimitives)
 	{
 		TSharedPtr<FJsonObject> JsonPrimitiveObject = JsonPrimitive->AsObject();
 		if (!JsonPrimitiveObject)
+		{
 			return false;
+		}
 
 		const TArray<TSharedPtr<FJsonValue>>* JsonTargetsArray;
 		if (!JsonPrimitiveObject->TryGetArrayField("targets", JsonTargetsArray))
@@ -2792,11 +2808,23 @@ bool FglTFRuntimeParser::GetMorphTargetNames(const int32 MeshIndex, TArray<FName
 			return false;
 		}
 
+		// check only ? (all primitives must have the same number of morph targets)
+		if (bCheckOnly)
+		{
+			if (JsonTargetsArray->Num() != MorphTargetNames.Num())
+			{
+				AddError("GetMorphTargetNames()", FString::Printf(TEXT("Invalid number of morph targets: %d, expected %d"), JsonTargetsArray->Num(), MorphTargetNames.Num()));
+			}
+			continue;
+		}
+
 		for (int32 MorphIndex = 0; MorphIndex < JsonTargetsArray->Num(); MorphIndex++)
 		{
 			FName MorphTargetName = FName(FString::Printf(TEXT("MorphTarget_%d"), MorphTargetIndex++));
 			MorphTargetNames.Add(MorphTargetName);
 		}
+
+		bCheckOnly = true;
 	}
 
 	// eventually cleanup names using targetNames extras

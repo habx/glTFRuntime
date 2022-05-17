@@ -1370,6 +1370,7 @@ protected:
 			return false;
 		}
 
+		Data.AddUninitialized(Count);
 		for (int64 ElementIndex = 0; ElementIndex < Count; ElementIndex++)
 		{
 			int64 Index = ElementIndex * Stride;
@@ -1426,7 +1427,7 @@ protected:
 				return false;
 			}
 
-			Data.Add(Filter(Value));
+			Data[ElementIndex] = Filter(Value);
 		}
 
 		return true;
@@ -1464,6 +1465,7 @@ protected:
 			return false;
 		}
 
+		Data.AddUninitialized(Count);
 		for (int64 ElementIndex = 0; ElementIndex < Count; ElementIndex++)
 		{
 			int64 Index = ElementIndex * Stride;
@@ -1505,7 +1507,7 @@ protected:
 				return false;
 			}
 
-			Data.Add(Filter(Value));
+			Data[ElementIndex] = Filter(Value);
 		}
 
 		return true;

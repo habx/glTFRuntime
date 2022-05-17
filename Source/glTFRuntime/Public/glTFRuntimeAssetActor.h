@@ -38,7 +38,6 @@ protected:
 
 	TMap<USceneComponent*, FName> SocketMapping;
 	TArray<USkeletalMeshComponent*> DiscoveredSkeletalMeshComponents;
-	bool bAllowNodeAnimations;
 
 public:	
 	// Called every frame
@@ -64,6 +63,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "glTFRuntime")
 	void SetCurveAnimationByName(const FString& CurveAnimationName);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "glTFRuntime")
+	bool bAllowNodeAnimations;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "glTFRuntime")
+	bool bStaticMeshesAsSkeletal;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category="glTFRuntime")
